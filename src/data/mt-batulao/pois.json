@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Viewpoint",
+    "fraction": 0.10
+  },
+  {
+    "name": "Mt. Batulao Trailhead",
+    "fraction": 0.20
+  },
+  {
+    "name": "Peak 1",
+    "fraction": 0.45
+  },
+  {
+    "name": "Peak 4",
+    "fraction": 0.55
+  },
+  {
+    "name": "Peak 7 Rest Area",
+    "fraction": 0.65
+  },
+  {
+    "name": "Rope-Assisted Trail Section",
+    "fraction": 0.75
+  },
+  {
+    "name": "Mount Batulao Summit",
+    "fraction": 0.85
+  },
+  {
+    "name": "Trail Junction",
+    "fraction": 0.90
+  }
+]
+

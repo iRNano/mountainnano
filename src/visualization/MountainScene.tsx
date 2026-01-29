@@ -132,7 +132,7 @@ const PoiMarkers: React.FC = () => {
             distanceFactor={12}
             position={[0, 0.2, 0]}
             style={{
-              fontSize: '10px',
+              fontSize: '4px',
               padding: '2px 6px',
               borderRadius: '999px',
               background: 'rgba(255,255,255,0.9)',

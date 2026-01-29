@@ -18,6 +18,7 @@ const GPX_PATH = path.join(__dirname, '..', 'src', 'data', 'mt-batulao', 'mt-bat
 const TRAIL_JSON_PATH = path.join(__dirname, '..', 'src', 'data', 'mt-batulao', 'trail.json');
 const TIMELINE_JSON_PATH = path.join(__dirname, '..', 'src', 'data', 'mt-batulao', 'timeline.json');
 const TERRAIN_JSON_PATH = path.join(__dirname, '..', 'src', 'data', 'mt-batulao', 'terrain.json');
+const POIS_DEF_PATH = path.join(__dirname, '..', 'src', 'data', 'mt-batulao', 'pois.json');
 
 async function loadGpx() {
   const raw = fs.readFileSync(GPX_PATH, 'utf8');
@@ -89,29 +90,27 @@ function normalizePoints(rawPoints) {
 }
 
 function buildTimeline(points) {
-  // Choose a small set of evenly spaced checkpoints along the trail.
-  // Label them with simple points of interest along the climb.
-  const labels = [
-    'Trailhead',
-    'Camp 1',
-    'Balagbag Ridge',
-    'Peak 9',
-    'Summit',
-  ];
-  const timelineCount = labels.length;
+  // Build timeline from POI definitions snapped to the trail.
+  const poiDefs = JSON.parse(fs.readFileSync(POIS_DEF_PATH, 'utf8'));
   const timeline = [];
 
-  for (let i = 0; i < timelineCount; i += 1) {
-    const t = timelineCount === 1 ? 0 : i / (timelineCount - 1);
-    const idx = Math.floor(t * (points.length - 1));
+  poiDefs.forEach((poi, index) => {
+    // For now we use a fraction along the trail; support for lat/lon can be
+    // added later if needed.
+    const fraction =
+      typeof poi.fraction === 'number'
+        ? Math.min(1, Math.max(0, poi.fraction))
+        : index / Math.max(1, poiDefs.length - 1);
+
+    const idx = Math.floor(fraction * (points.length - 1));
     const [x, y, z] = points[idx];
 
     timeline.push({
-      time: `00:${String(i * 20).padStart(2, '0')}`, // illustrative timestamps
-      label: labels[i],
+      time: poi.time || `00:${String(index * 10).padStart(2, '0')}`,
+      label: poi.name,
       position: [x, y, z],
     });
-  }
+  });
 
   return timeline;
 }
