@@ -195,7 +195,8 @@ export const MountainScene: React.FC<MountainSceneProps> = ({
         enableDamping
         dampingFactor={0.15}
         rotateSpeed={0.6}
-        maxPolarAngle={Math.PI / 2.1}
+        minPolarAngle={0}
+        maxPolarAngle={Math.PI}
         minDistance={3}
         maxDistance={15}
       />
