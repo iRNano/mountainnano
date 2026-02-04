@@ -15,8 +15,8 @@ const lerpTarget = new Vector3();
 /** Distance below which we consider the camera "at" the timeline step. */
 const ARRIVAL_THRESHOLD = 0.05;
 
-/** Seconds per step when playing (time-based advance; camera is not moved). */
-const PLAYBACK_SECONDS_PER_STEP = 2;
+/** Seconds per step when playing (time-based advance; camera is not moved). Exported for TrailRunner. */
+export const PLAYBACK_SECONDS_PER_STEP = 2;
 
 /**
  * Imperative camera controller that lerps the camera towards the current

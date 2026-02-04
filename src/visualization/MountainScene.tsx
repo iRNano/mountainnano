@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import { TrailPath, type TrailPoint } from './TrailPath';
-import { CameraController } from './CameraController';
+import { CameraController, PLAYBACK_SECONDS_PER_STEP } from './CameraController';
 import * as THREE from 'three';
 import trailData from '../data/mt-batulao/trail.json';
 import timelineData from '../data/mt-batulao/timeline.json';
@@ -56,6 +56,43 @@ const typedTrailPoints = (trailData as TrailJson).points as TrailPoint[];
 const typedTimeline = timelineData as TimelineEntry[];
 const typedTerrain = terrainData as TerrainJson;
 
+/** Find trail point index closest to a given position (for mapping waypoints to trail). */
+function closestTrailIndex(points: TrailPoint[], pos: [number, number, number]): number {
+  let best = 0;
+  let bestD2 = Infinity;
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const d2 =
+      (p[0] - pos[0]) ** 2 + (p[1] - pos[1]) ** 2 + (p[2] - pos[2]) ** 2;
+    if (d2 < bestD2) {
+      bestD2 = d2;
+      best = i;
+    }
+  }
+  return best;
+}
+
+/** Linear interpolation along the trail: fraction 0 = start, 1 = end. */
+function positionOnTrail(
+  points: TrailPoint[],
+  fraction: number
+): [number, number, number] {
+  if (points.length === 0) return [0, 0, 0];
+  if (points.length === 1) return [...points[0]];
+  const n = points.length - 1;
+  const i = Math.max(0, Math.min(fraction * n, n));
+  const i0 = Math.floor(i);
+  const i1 = Math.min(i0 + 1, n);
+  const t = i - i0;
+  const a = points[i0];
+  const b = points[i1];
+  return [
+    a[0] + t * (b[0] - a[0]),
+    a[1] + t * (b[1] - a[1]),
+    a[2] + t * (b[2] - a[2]),
+  ];
+}
+
 const TerrainHeightfield: React.FC = () => {
   const terrainRef = useRef<THREE.Mesh | null>(null);
 
@@ -107,6 +144,65 @@ const TerrainHeightfield: React.FC = () => {
         ]}
       />
       <meshStandardMaterial color="#c8e6c9" wireframe={false} />
+    </mesh>
+  );
+};
+
+interface TrailRunnerProps {
+  trailPoints: TrailPoint[];
+  timeline: TimelineEntry[];
+  activeIndex: number;
+  isPlaying: boolean;
+}
+
+/** Object that moves smoothly along the trail during playback instead of jumping waypoints. */
+const TrailRunner: React.FC<TrailRunnerProps> = ({
+  trailPoints,
+  timeline,
+  activeIndex,
+  isPlaying,
+}) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const playbackElapsedRef = useRef(0);
+
+  const stepToTrailFraction = useMemo(() => {
+    if (trailPoints.length <= 1) return timeline.map(() => 0);
+    const n = trailPoints.length - 1;
+    return timeline.map((entry) =>
+      Math.min(1, Math.max(0, closestTrailIndex(trailPoints, entry.position) / n))
+    );
+  }, [trailPoints, timeline]);
+
+  useEffect(() => {
+    playbackElapsedRef.current = 0;
+  }, [activeIndex]);
+
+  useFrame((_, delta) => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    const fracStart = stepToTrailFraction[activeIndex] ?? 0;
+    const fracEnd =
+      stepToTrailFraction[Math.min(activeIndex + 1, timeline.length - 1)] ??
+      fracStart;
+    let trailFrac: number;
+    if (isPlaying) {
+      playbackElapsedRef.current += delta;
+      const subProgress = Math.min(
+        1,
+        playbackElapsedRef.current / PLAYBACK_SECONDS_PER_STEP
+      );
+      trailFrac = fracStart + subProgress * (fracEnd - fracStart);
+    } else {
+      trailFrac = fracStart;
+    }
+    const [x, y, z] = positionOnTrail(trailPoints, trailFrac);
+    mesh.position.set(x, y + 0.02, z);
+  });
+
+  return (
+    <mesh ref={meshRef}>
+      <sphereGeometry args={[0.08, 16, 16]} />
+      <meshStandardMaterial color="#1565c0" />
     </mesh>
   );
 };
@@ -181,6 +277,14 @@ export const MountainScene: React.FC<MountainSceneProps> = ({
 
       {/* Points of interest derived from timeline entries */}
       <PoiMarkers />
+
+      {/* Object that travels smoothly along the trail during playback */}
+      <TrailRunner
+        trailPoints={typedTrailPoints}
+        timeline={timeline}
+        activeIndex={activeIndex}
+        isPlaying={isPlaying}
+      />
 
       {/* Camera controller that reacts to the active timeline step */}
       <CameraController
