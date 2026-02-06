@@ -37,7 +37,9 @@ async function loadGpx() {
     const lat = parseFloat(pt.$.lat);
     const lon = parseFloat(pt.$.lon);
     const ele = pt.ele?.[0] ? parseFloat(pt.ele[0]) : 0;
-    return { lat, lon, ele };
+    const timeStr = pt.time?.[0];
+    const timeMs = timeStr ? Date.parse(timeStr) : Number.NaN;
+    return { lat, lon, ele, timeMs };
   });
 
   return rawPoints;
@@ -78,6 +80,7 @@ function normalizePoints(rawPoints) {
 
   return {
     points: normalized,
+    times: rawPoints.map((p) => p.timeMs),
     bbox: {
       minLat,
       maxLat,
@@ -89,24 +92,81 @@ function normalizePoints(rawPoints) {
   };
 }
 
-function buildTimeline(points) {
+function formatElapsedLabel(totalSeconds) {
+  const clamped = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(clamped / 60);
+  const seconds = clamped % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function buildTimeline(points, times) {
   // Build timeline from POI definitions snapped to the trail.
   const poiDefs = JSON.parse(fs.readFileSync(POIS_DEF_PATH, 'utf8'));
   const timeline = [];
 
-  poiDefs.forEach((poi, index) => {
-    // For now we use a fraction along the trail; support for lat/lon can be
-    // added later if needed.
-    const fraction =
-      typeof poi.fraction === 'number'
-        ? Math.min(1, Math.max(0, poi.fraction))
-        : index / Math.max(1, poiDefs.length - 1);
+  // Precompute overall time range for fraction-by-time lookups.
+  const finiteTimes = times.filter((t) => Number.isFinite(t));
+  const startTime = finiteTimes.length ? Math.min(...finiteTimes) : Number.NaN;
+  const endTime = finiteTimes.length ? Math.max(...finiteTimes) : Number.NaN;
+  const totalDurationMs = Number.isFinite(startTime) && Number.isFinite(endTime)
+    ? endTime - startTime
+    : 0;
 
-    const idx = Math.floor(fraction * (points.length - 1));
+  poiDefs.forEach((poi, index) => {
+    let idx = 0;
+
+    // Preferred: derive position from elapsed time along the GPX track
+    // if the POI provides elapsedSeconds or elapsedMinutes.
+    const hasElapsedSeconds = typeof poi.elapsedSeconds === 'number';
+    const hasElapsedMinutes = typeof poi.elapsedMinutes === 'number';
+
+    if ((hasElapsedSeconds || hasElapsedMinutes) && Number.isFinite(startTime) && totalDurationMs > 0) {
+      const elapsedSeconds = hasElapsedSeconds
+        ? poi.elapsedSeconds
+        : poi.elapsedMinutes * 60;
+      const targetTimeMs = startTime + elapsedSeconds * 1000;
+
+      let bestIdx = 0;
+      let bestDiff = Infinity;
+      for (let i = 0; i < times.length; i += 1) {
+        const t = times[i];
+        if (!Number.isFinite(t)) continue;
+        const diff = Math.abs(t - targetTimeMs);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIdx = i;
+        }
+      }
+      idx = bestIdx;
+    } else {
+      // Fallback: use a fraction along the trail (existing behaviour).
+      const fraction =
+        typeof poi.fraction === 'number'
+          ? Math.min(1, Math.max(0, poi.fraction))
+          : index / Math.max(1, poiDefs.length - 1);
+
+      idx = Math.floor(fraction * (points.length - 1));
+    }
+
+    idx = Math.max(0, Math.min(points.length - 1, idx));
+
     const [x, y, z] = points[idx];
 
+    // Time label for the UI: prefer explicit poi.time, then elapsed time, then legacy 10s steps.
+    let labelTime;
+    if (typeof poi.time === 'string') {
+      labelTime = poi.time;
+    } else if (hasElapsedSeconds || hasElapsedMinutes) {
+      const elapsedSeconds = hasElapsedSeconds
+        ? poi.elapsedSeconds
+        : poi.elapsedMinutes * 60;
+      labelTime = formatElapsedLabel(elapsedSeconds);
+    } else {
+      labelTime = `00:${String(index * 10).padStart(2, '0')}`;
+    }
+
     timeline.push({
-      time: poi.time || `00:${String(index * 10).padStart(2, '0')}`,
+      time: labelTime,
       label: poi.name,
       position: [x, y, z],
     });
@@ -177,7 +237,7 @@ async function main() {
   const step = Math.max(1, Math.floor(rawPoints.length / 500)); // aim for ~500 points max
   const sampled = rawPoints.filter((_, i) => i % step === 0);
 
-  const { points, bbox } = normalizePoints(sampled);
+  const { points, bbox, times } = normalizePoints(sampled);
 
   const trailPayload = {
     name: 'Mt. Batulao Summit Trail',
@@ -187,7 +247,7 @@ async function main() {
     points,
   };
 
-  const timelinePayload = buildTimeline(points);
+  const timelinePayload = buildTimeline(points, times);
   const terrainPayload = buildHeightfield(points, bbox);
 
   fs.writeFileSync(TRAIL_JSON_PATH, JSON.stringify(trailPayload, null, 2));

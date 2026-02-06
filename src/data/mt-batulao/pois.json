@@ -1,35 +1,83 @@
 [
   {
+    "name": "Starting Point",
+    "elapsedMinutes": 0,
+    "time": "00:00"
+  },
+  {
     "name": "Viewpoint",
-    "fraction": 0.10
+    "elapsedMinutes": 34,
+    "time": "00:34"
   },
   {
     "name": "Mt. Batulao Trailhead",
-    "fraction": 0.20
+    "elapsedMinutes": 39,
+    "time": "00:39"
   },
   {
     "name": "Peak 1",
-    "fraction": 0.45
+    "elapsedMinutes": 68,
+    "time": "01:08"
+  },
+  {
+    "name": "Peak 2",
+    "elapsedMinutes": 71,
+    "time": "01:11"
+  },
+  {
+    "name": "Peak 3",
+    "elapsedMinutes": 74,
+    "time": "01:14"
   },
   {
     "name": "Peak 4",
-    "fraction": 0.55
+    "elapsedMinutes": 78,
+    "time": "01:18"
   },
   {
-    "name": "Peak 7 Rest Area",
-    "fraction": 0.65
-  },
-  {
-    "name": "Rope-Assisted Trail Section",
-    "fraction": 0.75
+    "name": "Rope Assisted Trail Section",
+    "elapsedMinutes": 105,
+    "time": "01:45"
   },
   {
     "name": "Mount Batulao Summit",
-    "fraction": 0.85
+    "elapsedMinutes": 113,
+    "time": "01:53"
   },
   {
-    "name": "Trail Junction",
-    "fraction": 0.90
+    "name": "Camp 9",
+    "elapsedMinutes": 115,
+    "time": "01:55"
+  },
+  {
+    "name": "Camp 6",
+    "elapsedMinutes": 130,
+    "time": "02:10"
+  },
+  {
+    "name": "Camp 4",
+    "elapsedMinutes": 132,
+    "time": "02:12"
+  },
+  {
+    "name": "Camp 2",
+    "elapsedMinutes": 134,
+    "time": "02:14"
+  },
+  {
+    "name": "Kubo 4",
+    "elapsedMinutes": 159,
+    "time": "02:29"
+  },
+  {
+    "name": "Junction",
+    "elapsedMinutes": 169,
+    "time": "02:49"
+  },
+  {
+    "name": "Starting Point",
+    "elapsedMinutes": 236,
+    "time": "03:56"
   }
 ]
 
