@@ -148,6 +148,9 @@ const TerrainHeightfield: React.FC = () => {
         tex.anisotropy = 8;
         tex.wrapS = THREE.ClampToEdgeWrapping;
         tex.wrapT = THREE.ClampToEdgeWrapping;
+        // Flip texture horizontally so it aligns with flipped east–west local coords
+        tex.repeat.x = -1;
+        tex.offset.x = 1;
         tex.needsUpdate = true;
         setTexture(tex);
       },

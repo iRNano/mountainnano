@@ -71,8 +71,9 @@ function normalizePoints(rawPoints) {
   // Compress elevation into a gentle 0..0.8 range.
   const elevationScale = 0.8 / eleSpan;
 
+  // Flip east–west (x) so local layout matches real-world orientation (e.g. Komoot).
   const normalized = rawPoints.map((p) => {
-    const x = (p.lon - centerLon) * horizontalScale;
+    const x = -(p.lon - centerLon) * horizontalScale;
     const z = (p.lat - centerLat) * horizontalScale;
     const y = (p.ele - minEle) * elevationScale;
     return [x, y, z];
