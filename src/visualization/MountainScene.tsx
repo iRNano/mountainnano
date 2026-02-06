@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import { TrailPath, type TrailPoint } from './TrailPath';
@@ -56,6 +56,15 @@ const typedTrailPoints = (trailData as TrailJson).points as TrailPoint[];
 const typedTimeline = timelineData as TimelineEntry[];
 const typedTerrain = terrainData as TerrainJson;
 
+// Mapbox configuration for terrain imagery
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as
+  | string
+  | undefined;
+const MAPBOX_STYLE_ID = 'mapbox/satellite-v9';
+const MAPBOX_IMAGE_URL = MAPBOX_TOKEN
+  ? `https://api.mapbox.com/styles/v1/${MAPBOX_STYLE_ID}/static/[${typedTerrain.bbox.minLon},${typedTerrain.bbox.minLat},${typedTerrain.bbox.maxLon},${typedTerrain.bbox.maxLat}]/1024x1024@2x?access_token=${MAPBOX_TOKEN}`
+  : undefined;
+
 /** Find trail point index closest to a given position (for mapping waypoints to trail). */
 function closestTrailIndex(points: TrailPoint[], pos: [number, number, number]): number {
   let best = 0;
@@ -95,6 +104,7 @@ function positionOnTrail(
 
 const TerrainHeightfield: React.FC = () => {
   const terrainRef = useRef<THREE.Mesh | null>(null);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     const mesh = terrainRef.current;
@@ -128,6 +138,27 @@ const TerrainHeightfield: React.FC = () => {
     geom.computeVertexNormals();
   }, []);
 
+  // Load Mapbox imagery as a texture and drape it over the heightfield.
+  useEffect(() => {
+    if (!MAPBOX_IMAGE_URL) return;
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      MAPBOX_IMAGE_URL,
+      (tex) => {
+        tex.anisotropy = 8;
+        tex.wrapS = THREE.ClampToEdgeWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.needsUpdate = true;
+        setTexture(tex);
+      },
+      undefined,
+      (err) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to load Mapbox terrain texture', err);
+      }
+    );
+  }, []);
+
   return (
     <mesh
       ref={terrainRef}
@@ -143,7 +174,13 @@ const TerrainHeightfield: React.FC = () => {
           typedTerrain.resolution - 1,
         ]}
       />
-      <meshStandardMaterial color="#c8e6c9" wireframe={false} />
+      {texture ? (
+        // Use a basic material when the Mapbox texture is present so the imagery
+        // is not washed out by lighting. This makes the texture change obvious.
+        <meshBasicMaterial map={texture} />
+      ) : (
+        <meshStandardMaterial color="#c8e6c9" wireframe={false} />
+      )}
     </mesh>
   );
 };
